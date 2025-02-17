@@ -12,6 +12,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 $stmt = $pdo->query("SELECT v.*, u.full_name AS user_name, u.email AS user_email, s.full_name AS staff_name FROM visits v JOIN users u ON v.user_id = u.id JOIN users s ON v.staff_id = s.id");
 $visits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Possible status options
+$statusOptions = ['Pending', 'Approved', 'Completed', 'Canceled'];
+
 // Handle visit deletion
 if (isset($_POST['delete'])) {
     $visitId = $_POST['visit_id'];
@@ -28,11 +31,10 @@ if (isset($_POST['delete'])) {
 // Handle visit update
 if (isset($_POST['update'])) {
     $visitId = $_POST['visit_id'];
-    $staffId = $_POST['staff_id'];
     $visitDate = $_POST['visit_date'];
-    
-    $stmt = $pdo->prepare("UPDATE visits SET staff_id = ?, visit_date = ? WHERE id = ?");
-    if ($stmt->execute([$staffId, $visitDate, $visitId])) {
+
+    $stmt = $pdo->prepare("UPDATE visits SET visit_date = ? WHERE id = ?");
+    if ($stmt->execute([$visitDate, $visitId])) {
         $_SESSION['success'] = "Visit updated successfully!";
     } else {
         $_SESSION['error'] = "Failed to update visit.";
@@ -40,77 +42,131 @@ if (isset($_POST['update'])) {
     header("Location: manage_visits.php");
     exit();
 }
+
+// Handle status update via AJAX
+if (isset($_POST['status_update'])) {
+    $visitId = $_POST['visit_id'];
+    $newStatus = $_POST['status'];
+
+    if (!empty($newStatus) && in_array($newStatus, $statusOptions)) {
+        $stmt = $pdo->prepare("UPDATE visits SET status = ? WHERE id = ?");
+        if ($stmt->execute([$newStatus, $visitId])) {
+            echo "success";
+        } else {
+            echo "error";
+        }
+    } else {
+        echo "invalid"; // Prevent invalid status update
+    }
+    exit();
+}
 ?>
 
 <?php include '../includes/header_admin.php'; ?>
 <div class="container mt-5">
     <h2>Manage Visits</h2>
-    <ul class="list-group">
-        <?php foreach ($visits as $visit): ?>
-        <li class="list-group-item">
-            <strong>User:</strong> <?php echo $visit['user_name']; ?> - <strong>Email:</strong>
-            <?php echo $visit['user_email']; ?> - <strong>Staff:</strong>
-            <?php echo $visit['staff_name']; ?> - <strong>Date:</strong> <?php echo $visit['visit_date']; ?>
 
-            <!-- Button to trigger update modal -->
-            <button type="button" class="btn btn-warning btn-sm mt-2" data-toggle="modal"
-                data-target="#updateVisitModal<?php echo $visit['id']; ?>">Update</button>
+    <!-- Display success or error messages -->
+    <?php if (isset($_SESSION['success'])): ?>
+    <div class="alert alert-success"><?php echo $_SESSION['success']; unset($_SESSION['success']); ?></div>
+    <?php endif; ?>
+    <?php if (isset($_SESSION['error'])): ?>
+    <div class="alert alert-danger"><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></div>
+    <?php endif; ?>
 
-            <!-- Modal for updating visit -->
-            <div class="modal fade" id="updateVisitModal<?php echo $visit['id']; ?>" tabindex="-1"
-                aria-labelledby="updateVisitModalLabel<?php echo $visit['id']; ?>" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="updateVisitModalLabel<?php echo $visit['id']; ?>">Update Visit
-                            </h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <form method="POST">
-                                <input type="hidden" name="visit_id" value="<?php echo $visit['id']; ?>">
-
-                                <!-- Select Staff for update -->
-                                <div class="mb-3">
-                                    <label>Select Staff</label>
-                                    <select name="staff_id" class="form-control" required>
-                                        <?php 
-                                        $staffStmt = $pdo->query("SELECT id, full_name FROM users WHERE role = 'staff'");
-                                        $staffMembers = $staffStmt->fetchAll(PDO::FETCH_ASSOC);
-                                        foreach ($staffMembers as $staff): 
-                                        ?>
-                                        <option value="<?php echo $staff['id']; ?>"
-                                            <?php echo $staff['id'] == $visit['staff_id'] ? 'selected' : ''; ?>>
-                                            <?php echo $staff['full_name']; ?>
-                                        </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-
-                                <!-- Visit Date for update -->
-                                <div class="mb-3">
-                                    <label>Visit Date</label>
-                                    <input type="datetime-local" name="visit_date" class="form-control"
-                                        value="<?php echo date('Y-m-d\TH:i', strtotime($visit['visit_date'])); ?>"
-                                        required>
-                                </div>
-
-                                <button type="submit" name="update" class="btn btn-success w-100">Update Visit</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </li>
-        <?php endforeach; ?>
-    </ul>
+    <table class="table table-bordered mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Staff Member</th>
+                <th>Visit Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($visits as $visit): ?>
+            <tr>
+                <td><?php echo $visit['user_name']; ?></td>
+                <td><?php echo $visit['user_email']; ?></td>
+                <td><?php echo $visit['staff_name']; ?></td>
+                <td>
+                    <form method="POST" class="d-inline">
+                        <input type="hidden" name="visit_id" value="<?php echo $visit['id']; ?>">
+                        <input type="datetime-local" name="visit_date" class="form-control visitDate"
+                            value="<?php echo date('Y-m-d\TH:i', strtotime($visit['visit_date'])); ?>" required>
+                        <button type="submit" name="update" class="btn btn-sm btn-primary mt-2">Update</button>
+                    </form>
+                </td>
+                <td>
+                    <select class="form-control statusSelect" data-id="<?php echo $visit['id']; ?>">
+                        <?php foreach ($statusOptions as $status): ?>
+                        <option value="<?php echo $status; ?>"
+                            <?php echo ($visit['status'] == $status) ? 'selected' : ''; ?>>
+                            <?php echo $status; ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button class="btn btn-sm btn-success mt-2 updateStatusBtn"
+                        data-id="<?php echo $visit['id']; ?>">Update Status</button>
+                </td>
+                <td>
+                    <form method="POST" class="d-inline">
+                        <input type="hidden" name="visit_id" value="<?php echo $visit['id']; ?>">
+                        <button type="submit" name="delete" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.7/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<!-- JavaScript for Status Update -->
+<script>
+$(document).ready(function() {
+    $(".updateStatusBtn").on("click", function() {
+        let visitId = $(this).data("id");
+        let newStatus = $(".statusSelect[data-id='" + visitId + "']").val();
+
+        $.ajax({
+            url: "manage_visits.php",
+            type: "POST",
+            data: {
+                visit_id: visitId,
+                status: newStatus,
+                status_update: true
+            },
+            success: function(response) {
+                if (response === "success") {
+                    alert("Status updated successfully!");
+                } else if (response === "invalid") {
+                    alert("Invalid status update.");
+                } else {
+                    alert("Failed to update status.");
+                }
+            },
+            error: function() {
+                alert("Failed to update status.");
+            }
+        });
+    });
+
+    let today = new Date();
+    let minDateTime = today.toISOString().slice(0, 16);
+
+    // Restrict past date selection
+    document.querySelectorAll(".visitDate").forEach(function(input) {
+        input.setAttribute("min", minDateTime);
+    });
+});
+</script>
 
 </body>
 

@@ -48,7 +48,7 @@ $totalTreatments = $pdo->query("SELECT COUNT(*) FROM treatments")->fetchColumn()
     </div>
     <a href="manage_users.php" class="btn btn-primary mt-4">Manage Users</a>
     <a href="manage_patients.php" class="btn btn-secondary mt-4">Manage Patients</a>
-    <a href="manage_visits.php" class="btn btn-success mt-4">manage Visits</a>
+    <a href="manage_visits.php" class="btn btn-success mt-4">Manage Visits</a>
 
 </div>
 </body>

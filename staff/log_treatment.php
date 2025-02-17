@@ -18,21 +18,44 @@ $stmt = $pdo->prepare("SELECT patients.id, users.full_name, users.email
 $stmt->execute([$staffId]);
 $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Submit treatment
+// Check if we're editing a treatment
+$treatmentToEdit = null;
+if (isset($_GET['edit_id'])) {
+    $editId = $_GET['edit_id'];
+    $stmt = $pdo->prepare("SELECT * FROM treatments WHERE id = ? AND prescribed_by = ?");
+    $stmt->execute([$editId, $staffId]);
+    $treatmentToEdit = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// Submit treatment (for new treatments or updating existing ones)
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $patientId = $_POST['patient_id'];
     $disease = $_POST['disease'];
     $medicine = $_POST['medicine'];
     $treatment = $_POST['treatment'];
 
-    $stmt = $pdo->prepare("INSERT INTO treatments (patient_id, disease, medicine, treatment_details, prescribed_by) 
-                           VALUES (?, ?, ?, ?, ?)");
-    if ($stmt->execute([$patientId, $disease, $medicine, $treatment, $staffId])) {
-        $_SESSION['success'] = "Treatment added successfully!";
-        header("Location: dashboard.php");
-        exit();
+    if (isset($_POST['treatment_id']) && $_POST['treatment_id'] > 0) {
+        // Update treatment
+        $treatmentId = $_POST['treatment_id'];
+        $stmt = $pdo->prepare("UPDATE treatments SET patient_id = ?, disease = ?, medicine = ?, treatment_details = ? WHERE id = ? AND prescribed_by = ?");
+        if ($stmt->execute([$patientId, $disease, $medicine, $treatment, $treatmentId, $staffId])) {
+            $_SESSION['success'] = "Treatment updated successfully!";
+            header("Location: dashboard.php");
+            exit();
+        } else {
+            $_SESSION['error'] = "Failed to update treatment!";
+        }
     } else {
-        $_SESSION['error'] = "Failed to add treatment!";
+        // Add new treatment
+        $stmt = $pdo->prepare("INSERT INTO treatments (patient_id, disease, medicine, treatment_details, prescribed_by) 
+                               VALUES (?, ?, ?, ?, ?)");
+        if ($stmt->execute([$patientId, $disease, $medicine, $treatment, $staffId])) {
+            $_SESSION['success'] = "Treatment added successfully!";
+            header("Location: dashboard.php");
+            exit();
+        } else {
+            $_SESSION['error'] = "Failed to add treatment!";
+        }
     }
 }
 
@@ -62,12 +85,16 @@ $treatments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Treatment Form -->
     <form method="POST">
+        <?php if ($treatmentToEdit): ?>
+        <input type="hidden" name="treatment_id" value="<?php echo $treatmentToEdit['id']; ?>">
+        <?php endif; ?>
         <div class="mb-3">
             <label>Select Patient</label>
             <select name="patient_id" class="form-control" required>
                 <option value="">-- Select a Patient --</option>
                 <?php foreach ($patients as $patient): ?>
-                <option value="<?php echo $patient['id']; ?>">
+                <option value="<?php echo $patient['id']; ?>"
+                    <?php echo isset($treatmentToEdit) && $treatmentToEdit['patient_id'] == $patient['id'] ? 'selected' : ''; ?>>
                     <?php echo $patient['full_name'] . " (" . $patient['email'] . ")"; ?>
                 </option>
                 <?php endforeach; ?>
@@ -75,17 +102,21 @@ $treatments = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
         <div class="mb-3">
             <label>Disease</label>
-            <input type="text" name="disease" class="form-control" required>
+            <input type="text" name="disease" class="form-control" required
+                value="<?php echo $treatmentToEdit ? $treatmentToEdit['disease'] : ''; ?>">
         </div>
         <div class="mb-3">
             <label>Medicine</label>
-            <input type="text" name="medicine" class="form-control" required>
+            <input type="text" name="medicine" class="form-control" required
+                value="<?php echo $treatmentToEdit ? $treatmentToEdit['medicine'] : ''; ?>">
         </div>
         <div class="mb-3">
             <label>Treatment Details</label>
-            <textarea name="treatment" class="form-control" required></textarea>
+            <textarea name="treatment" class="form-control"
+                required><?php echo $treatmentToEdit ? $treatmentToEdit['treatment_details'] : ''; ?></textarea>
         </div>
-        <button type="submit" class="btn btn-success w-100">Save Treatment</button>
+        <button type="submit"
+            class="btn btn-success w-100"><?php echo $treatmentToEdit ? 'Update Treatment' : 'Save Treatment'; ?></button>
     </form>
 
     <a href="dashboard.php" class="btn btn-secondary mt-3">Back</a>
@@ -102,6 +133,7 @@ $treatments = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <th>Medicine</th>
                 <th>Treatment Details</th>
                 <th>Date</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -112,6 +144,9 @@ $treatments = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <td><?php echo $treatment['medicine']; ?></td>
                 <td><?php echo $treatment['treatment_details']; ?></td>
                 <td><?php echo date("F j, Y, g:i a", strtotime($treatment['created_at'])); ?></td>
+                <td>
+                    <a href="?edit_id=<?php echo $treatment['id']; ?>" class="btn btn-warning btn-sm">Edit</a>
+                </td>
             </tr>
             <?php endforeach; ?>
         </tbody>

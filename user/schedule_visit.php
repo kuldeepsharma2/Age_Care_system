@@ -63,7 +63,7 @@ $scheduledVisits = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
         <div class="mb-3">
             <label>Visit Date</label>
-            <input type="datetime-local" name="visit_date" class="form-control" required>
+            <input type="datetime-local" name="visit_date" class="form-control" id="visitDate" required>
         </div>
         <button type="submit" class="btn btn-success w-100">Schedule Visit</button>
     </form>
@@ -93,8 +93,18 @@ $scheduledVisits = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php else: ?>
     <div class="alert alert-warning mt-3">You have no scheduled visits.</div>
     <?php endif; ?>
-
 </div>
+
+<!-- jQuery for date restriction -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let today = new Date();
+    let minDateTime = today.toISOString().slice(0, 16); // Format as YYYY-MM-DDTHH:MM
+
+    document.getElementById("visitDate").setAttribute("min", minDateTime);
+});
+</script>
+
 </body>
 
 </html>
