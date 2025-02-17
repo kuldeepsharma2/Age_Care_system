@@ -1,0 +1,14 @@
+body.light-mode {
+    background-color: #ffffff;
+    color: #333;
+}
+body.dark-mode {
+    background-color: #121212;
+    color: #fff;
+}
+.bg-purple {
+    background-color: #6a0dad !important;
+}
+.navbar .btn {
+    border: 2px solid white;
+}
