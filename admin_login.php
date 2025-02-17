@@ -26,7 +26,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <?php include 'includes/header.php'; ?>
 <div class="container mt-5">
-    <h2 class="text-center">Admin/Staff Login</h2>
+    <h2 class="text-center">Admin Login</h2>
     <?php if (isset($_SESSION['error'])) { echo "<div class='alert alert-danger'>".$_SESSION['error']."</div>"; unset($_SESSION['error']); } ?>
     <form method="POST" class="d-flex flex-column justify-content-center align-items-center ">
         <div class="form-group d-flex flex-column align-items-center w-50">

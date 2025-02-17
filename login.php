@@ -49,7 +49,7 @@ if (isset($_SESSION['error'])) {
 
 <?php include 'includes/header.php'; ?>
 <div class="container mt-5">
-    <h2>Login</h2>
+    <h2>Staff Login</h2>
     <form method="POST">
         <div class="mb-3">
             <label>Email</label>

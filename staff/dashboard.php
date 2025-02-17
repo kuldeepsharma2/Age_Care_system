@@ -28,7 +28,7 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="mt-3 mb-5 text-center">
         <a href="log_treatment.php" class="btn btn-primary mt-4">Treatment</a>
         <a href="add_lab_report.php" class="btn btn-secondary mt-4">Add Report</a>
-
+        <a href="view_reports.php" class="btn btn-secondary mt-4">View Report</a>
 
     </div>
 
